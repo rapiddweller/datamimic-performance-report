@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Mac OS
+.DS_Store
+
 # C extensions
 *.so
 
@@ -169,3 +172,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# app specific
+results/
+reports/
+tmp/
