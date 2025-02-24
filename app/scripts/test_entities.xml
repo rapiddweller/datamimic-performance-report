@@ -1,0 +1,43 @@
+<setup multiprocessing="--MULTIPROCESSING--" numProcess="--NUM_PROCESS--">
+    <generate name="generators" count="--COUNT--" target="--EXPORTER--">
+        <variable name="personObj" entity="Person(min_age=1, max_age=10, female_quota=1)" />
+        <key name="person_academic_title" script="personObj.academic_title" />
+        <key name="person_age" script="personObj.age" />
+        <key name="person_birth_date" script="personObj.birthdate" />
+        <key name="person_given_name" script="personObj.given_name" />
+        <key name="person_family_name" script="personObj.family_name" />
+        <key name="person_email" script="personObj.email" />
+        <key name="person_gender" script="personObj.gender" />
+        <key name="person_salutation" script="personObj.salutation" />
+        <key name="person_nobility_title" script="personObj.nobility_title" />
+        <variable name="companyObj" entity="Company" />
+        <key name="company_city" script="companyObj.city" />
+        <key name="company_city_name" script="companyObj.city" />
+        <key name="company_country_code" script="companyObj.country_code" />
+        <key name="company_email" script="companyObj.email" />
+        <key name="company_fax" script="companyObj.fax" />
+        <key name="company_full_name" script="companyObj.full_name" />
+        <key name="company_house_number" script="companyObj.house_number" />
+        <key name="company_id" script="companyObj.id" />
+        <key name="company_sector" script="companyObj.sector" />
+        <key name="company_short_name" script="companyObj.short_name" />
+        <key name="company_office_phone" script="companyObj.office_phone" />
+        <key name="company_zip_code" script="companyObj.zip_code" />
+        <key name="company_state" script="companyObj.state" />
+        <key name="company_street" script="companyObj.street" />
+        <key name="company_url" script="companyObj.url" />
+        <variable name="cityObj" entity="City" />
+        <key name="city_name" script="cityObj.name" />
+        <key name="city_name_extension" script="cityObj.name_extension" />
+        <key name="city_country" script="cityObj.country" />
+        <key name="city_area_code" script="cityObj.area_code" />
+        <key name="city_language" script="cityObj.language" />
+        <key name="city_population" script="cityObj.population" />
+        <variable name="countryObj" entity="Country" />
+        <key name="country_iso_code" script="countryObj.iso_code" />
+        <key name="country_name" script="countryObj.name" />
+        <key name="country_default_language_locale" script="countryObj.default_language_locale" />
+        <key name="country_phone_code" script="countryObj.phone_code" />
+		<key name="country_population" script="countryObj.population" />
+    </generate>
+</setup>

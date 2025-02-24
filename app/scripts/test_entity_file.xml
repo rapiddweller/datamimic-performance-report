@@ -1,0 +1,12 @@
+<setup multiprocessing="--MULTIPROCESSING--" numProcess="--NUM_PROCESS--">
+    <generate name="entity_file_test" source="data/data.ent.csv" count="--COUNT--"
+        target="--EXPORTER--" cyclic="True">
+        <key name="id" type="int" generator="IncrementGenerator" />
+        <key name="countryCode" script="countryCode + '-' + str(id)" />
+        <key name="city" script="city + '-' + str(id)" />
+        <key name="postCode" script="postCode + '-' + str(id)" />
+        <key name="description" script="description + '-' + str(id)" />
+        <key name="title" script="title + '-' + str(id)" />
+        <key name="title_description" script="title_description + '-' + str(id)" />
+    </generate>
+</setup>

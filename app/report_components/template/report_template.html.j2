@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Performance Report - {{ script_name }}</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #ffffff;
+      --text-color: #333333;
+      --container-bg: #f5f5f5;
+      --explanation-bg: #e9ecef;
+      --toggle-bg: #dddddd;
+      --chart-border: #cccccc;
+      --button-color: #4051b5;
+      font-family: 'Roboto', sans-serif;
+    }
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.5s, color 0.5s;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: var(--container-bg);
+      transition: background-color 0.5s;
+    }
+    h1, h2, h3 {
+      font-weight: 700;
+    }
+    .chart-container, .version-summary-container {
+      margin-bottom: 40px;
+      border: 1px solid var(--chart-border);
+      padding: 15px;
+      background-color: var(--container-bg);
+      border-radius: 5px;
+      transition: background-color 0.5s;
+    }
+    .data-mode-selector {
+      margin: 20px 0;
+      padding: 10px;
+      background-color: var(--toggle-bg);
+      border-radius: 5px;
+      text-align: right;
+      transition: background-color 0.5s;
+    }
+    .data-explanation {
+      margin: 10px 0;
+      padding: 15px;
+      background-color: var(--explanation-bg);
+      border-radius: 5px;
+      transition: background-color 0.5s;
+    }
+    .data-explanation h3 {
+      margin-top: 0;
+    }
+    label {
+      margin-right: 20px;
+    }
+    /* Table styles for version summary */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid var(--chart-border);
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background-color: var(--toggle-bg);
+    }
+    /* Dark mode styles */
+    body.dark-mode {
+      --bg-color: #121212;
+      --text-color: #e0e0e0;
+      --container-bg: #1e1e1e;
+      --explanation-bg: #2c2c2c;
+      --toggle-bg: #333333;
+      --chart-border: #444444;
+    }
+    /* Toggle button style */
+    .toggle-button {
+      cursor: pointer;
+      background-color: var(--button-color);
+      border: none;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 14px;
+      transition: background-color 0.3s;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Performance Report - {{ script_name }}</h1>
+    
+    <div class="theme-toggle" style="text-align: right; margin-bottom: 10px;">
+      <button id="themeToggle" class="toggle-button">Switch to Dark Mode</button>
+    </div>
+    
+    <div class="data-explanation">
+      <h3>Understanding the Data</h3>
+      <p><strong>Measured Data:</strong> Actual performance measurements (discrete points) recorded per test run.</p>
+      <p><strong>Interpolated Data:</strong> Estimated curves derived from measured values (used only for throughput analysis).</p>
+      <p><strong>Version Comparison:</strong> Datasets are grouped by tested version, allowing direct performance comparisons.</p>
+    </div>
+    
+    <div class="data-mode-selector">
+      <h3>Data Visualization Mode (Throughput Only)</h3>
+      <label><input type="radio" name="mode" value="both" checked> Show Both (Measured + Interpolated)</label>
+      <label><input type="radio" name="mode" value="measured"> Measured Only</label>
+      <label><input type="radio" name="mode" value="interpolated"> Interpolated Only</label>
+    </div>
+    
+    <div id="throughputConsolidatedSection" class="chart-container">
+      <h2>Consolidated Throughput Comparison (All Scripts)</h2>
+      <canvas id="consolidatedThroughputChart"></canvas>
+    </div>
+    
+    <div id="throughputChartsSection" class="chart-container">
+      <h2>Throughput Comparison by Script</h2>
+      <!-- Throughput charts will be generated here -->
+    </div>
+    
+    <div id="memorySingleChartsSection" class="chart-container">
+      <h2>Memory Comparison (Single Process) by Script</h2>
+      <!-- Single process memory charts will be generated here -->
+    </div>
+    
+    <div id="memoryMultiChartsSection" class="chart-container">
+      <h2>Memory Comparison (Multi-Process) by Script</h2>
+      <div id="multiMemoryChartsContainer"></div>
+    </div>
+    
+    <div class="version-summary-container">
+      <h2>Version Comparison Summary</h2>
+      <p>The table below provides average throughput and memory usage metrics for each version tested.</p>
+      <table id="versionSummaryTable">
+        <thead>
+          <tr>
+            <th>Version</th>
+            <th>Avg Throughput (Entities/s)</th>
+            <th>Avg Memory (MB)</th>
+            <th>Test Count</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Rows inserted dynamically -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+  
+<script>
+// These placeholders are replaced by your Python code, encoded as JSON
+const rawThroughputDatasets = {{ rawThroughputDatasets|safe }};
+const smoothThroughputDatasets = {{ smoothThroughputDatasets|safe }};
+const rawSingleMemoryDatasets = {{ rawSingleMemoryDatasets|safe }};
+const rawMultiMemoryDatasets = {{ rawMultiMemoryDatasets|safe }};
+const versionSummary = {{ versionSummary|safe }};
+const overallThroughput = {{ overallThroughput|safe }};
+
+// Cache for deterministic colors
+const colorCache = {};
+function getDeterministicColor(label) {
+  if (colorCache[label]) return colorCache[label];
+  let hash = 0;
+  for (let i = 0; i < label.length; i++) {
+    hash = label.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+  const saturation = 70;
+  const lightness = document.body.classList.contains('dark-mode') ? 70 : 40;
+  const color = "hsl(" + hue + ", " + saturation + "%, " + lightness + "%)";
+  colorCache[label] = color;
+  return color;
+}
+
+// Optionally apply styles to datasets
+function createDatasetStyles(datasets, type) {
+  return datasets.map(ds => {
+    const color = getDeterministicColor(ds.label);
+    const isLine = ds.type === "line" || (type !== 'measured' && ds.type !== undefined);
+    return {
+      ...ds,
+      borderColor: color,
+      backgroundColor: color,
+      pointRadius: isLine ? 0 : 4,
+      pointStyle: isLine ? 'line' : 'circle',
+      showLine: isLine,
+      fill: false,
+      tension: isLine ? 0 : 0.4
+    };
+  });
+}
+
+function createChart(canvasId, config) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) {
+    console.error("Canvas element with id '" + canvasId + "' was not found");
+    return null;
+  }
+  try {
+    const ctx = canvas.getContext('2d');
+    return new Chart(ctx, config);
+  } catch (error) {
+    console.error("Error creating chart on canvas " + canvasId, error);
+  }
+}
+
+function sanitizeId(str) {
+  return str.replace(/[^a-zA-Z0-9_-]/g, '');
+}
+
+// Create consolidated throughput chart
+function createConsolidatedChart() {
+  if (overallThroughput && overallThroughput.length > 0) {
+    const consolidatedCtx = document.getElementById('consolidatedThroughputChart').getContext('2d');
+    const versionLabels = overallThroughput.map(obj => obj.version);
+    const throughputValues = overallThroughput.map(obj => obj.throughput);
+    const consolidatedConfig = {
+      type: 'bar',
+      data: {
+        labels: versionLabels,
+        datasets: [{
+          label: "Average Throughput (Entities/s)",
+          data: throughputValues,
+          backgroundColor: versionLabels.map(label => getDeterministicColor(label))
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: {
+            title: { display: true, text: 'Version' },
+            type: 'category'
+          },
+          y: {
+            title: { display: true, text: 'Throughput (Entities/s)' },
+            beginAtZero: true
+          }
+        }
+      }
+    };
+    new Chart(consolidatedCtx, consolidatedConfig);
+  } else {
+    console.warn("No overall throughput data available for consolidated chart.");
+  }
+}
+
+// Create per-script throughput charts using measured (raw) and interpolated data (filtered for x <= 20)
+function createThroughputCharts() {
+  const container = document.getElementById('throughputChartsSection');
+  container.innerHTML = "";
+
+  // Helper function to extract script and version from label
+  function extractScriptAndVersion(label) {
+    if (label.includes(' - ')) {
+      const parts = label.split(' - ');
+      const script = parts[0].trim();
+      const version = parts.slice(1).join(' - ').trim();
+      return { script, version };
+    }
+    const match = label.match(/^(.*?)\s*\((.*?)\)$/);
+    if (match) {
+      return { script: match[1].trim(), version: match[2].trim() };
+    }
+    return { script: label, version: 'default' };
+  }
+
+  // Group datasets by script and version
+  let groups = {};
+
+  // Process measured (raw) datasets
+  rawThroughputDatasets.forEach(ds => {
+    const { script, version } = extractScriptAndVersion(ds.label);
+    if (!groups[script]) groups[script] = {};
+    if (!groups[script][version]) groups[script][version] = { measured: null, interpolated: null };
+    groups[script][version].measured = ds;
+  });
+
+  // Process interpolated (smooth) datasets and filter to x <= 20
+  smoothThroughputDatasets.forEach(ds => {
+    const { script, version } = extractScriptAndVersion(ds.label);
+    // Filter interpolated data so that only points with x <= 20 are used
+    const filteredData = ds.data.filter(point => point.x <= 20);
+    let dsFiltered = Object.assign({}, ds, { data: filteredData });
+    if (!groups[script]) groups[script] = {};
+    if (!groups[script][version]) groups[script][version] = { measured: null, interpolated: null };
+    groups[script][version].interpolated = dsFiltered;
+  });
+
+  // Create one chart per script containing data for different versions
+  Object.keys(groups).forEach(script => {
+    let datasets = [];
+    Object.keys(groups[script]).forEach(version => {
+      let entry = groups[script][version];
+      if (entry.measured) {
+        let dsMeasured = Object.assign({}, entry.measured);
+        dsMeasured.label = version + " (measured)";
+        datasets.push(dsMeasured);
+      }
+      if (entry.interpolated) {
+        let dsInterpolated = Object.assign({}, entry.interpolated);
+        dsInterpolated.label = version + " (interpolated)";
+        datasets.push(dsInterpolated);
+      }
+    });
+
+    if (datasets.length > 0) {
+      const chartDiv = document.createElement('div');
+      chartDiv.className = 'chart-container';
+      const header = document.createElement('h3');
+      header.innerText = `Throughput for ${script}`;
+      chartDiv.appendChild(header);
+      const canvas = document.createElement('canvas');
+      const canvasId = sanitizeId(script + '_throughputChart');
+      canvas.id = canvasId;
+      chartDiv.appendChild(canvas);
+      container.appendChild(chartDiv);
+
+      const config = {
+        type: 'scatter',
+        data: { datasets: datasets },
+        options: {
+          responsive: true,
+          plugins: {
+            title: { display: true, text: `Throughput vs Number of Processes for ${script}` },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return context.dataset.label + ": " + context.parsed.y.toFixed(0) + " entities/s";
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: 'Number of Processes' },
+              type: 'linear',
+              position: 'bottom'
+            },
+            y: {
+              title: { display: true, text: 'Throughput (Entities/s)' },
+              beginAtZero: true
+            }
+          }
+        }
+      };
+      new Chart(canvas.getContext('2d'), config);
+    }
+  });
+}
+
+// Create single-process memory charts
+function createSingleMemoryCharts() {
+  const container = document.getElementById('memorySingleChartsSection');
+  container.innerHTML = "";
+
+  // Helper function to extract script and version from label
+  function extractScriptAndVersion(label) {
+    if (label.includes(' - ')) {
+      const parts = label.split(' - ');
+      const script = parts[0].trim();
+      const version = parts.slice(1).join(' - ').trim();
+      return { script, version };
+    }
+    const match = label.match(/^(.*?)\s*\((.*?)\)$/);
+    if (match) {
+      return { script: match[1].trim(), version: match[2].trim() };
+    }
+    return { script: label, version: 'default' };
+  }
+
+  let groups = {};
+  rawSingleMemoryDatasets.forEach(ds => {
+    const { script, version } = extractScriptAndVersion(ds.label);
+    if (!groups[script]) {
+      groups[script] = {};
+    }
+    if (!groups[script][version]) {
+      groups[script][version] = [];
+    }
+    groups[script][version].push(ds);
+  });
+
+  Object.keys(groups).forEach(script => {
+    let versionDatasets = [];
+    Object.keys(groups[script]).forEach(version => {
+      const dsArray = groups[script][version];
+      if (dsArray.length > 0) {
+        const refData = dsArray[0].data;
+        const aggregatedData = refData.map((point, index) => {
+          let sum = 0;
+          let count = 0;
+          dsArray.forEach(ds => {
+            if (ds.data[index]) {
+              sum += ds.data[index].y;
+              count++;
+            }
+          });
+          return { x: point.x, y: count ? sum / count : 0 };
+        });
+        versionDatasets.push({
+          label: version,
+          data: aggregatedData,
+          borderColor: getDeterministicColor(version),
+          backgroundColor: getDeterministicColor(version),
+          fill: false,
+          tension: 0.4
+        });
+      }
+    });
+
+    if (versionDatasets.length > 0) {
+      const chartDiv = document.createElement('div');
+      chartDiv.className = 'chart-container';
+      const header = document.createElement('h3');
+      header.innerText = `Memory (Single Process) for ${script}`;
+      chartDiv.appendChild(header);
+      const canvas = document.createElement('canvas');
+      const canvasId = sanitizeId(script + "_memorySingleComparison");
+      canvas.id = canvasId;
+      chartDiv.appendChild(canvas);
+      container.appendChild(chartDiv);
+      const config = {
+        type: 'line',
+        data: { datasets: versionDatasets },
+        options: {
+          responsive: true,
+          plugins: {
+            title: { display: true, text: `Memory Comparison by Version for ${script}` }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: 'Number of Entities' },
+              type: 'linear',
+              position: 'bottom'
+            },
+            y: {
+              title: { display: true, text: 'Memory (MB)' },
+              beginAtZero: true
+            }
+          }
+        }
+      };
+      new Chart(canvas.getContext('2d'), config);
+    }
+  });
+}
+
+// Create multi-process memory charts
+function createMultiMemoryCharts() {
+  const multiContainer = document.getElementById('multiMemoryChartsContainer');
+  multiContainer.innerHTML = "";
+  let groups = {};
+  for (const version in rawMultiMemoryDatasets) {
+    const procData = rawMultiMemoryDatasets[version];
+    for (const proc in procData) {
+      procData[proc].forEach(ds => {
+        let script = ds.label;
+        let ver = version;
+        const match = ds.label.match(/^(.*?)\s*\((.*?)\)$/);
+        if (match) {
+          script = match[1].trim();
+          ver = match[2].trim();
+        }
+        if (!groups[script]) groups[script] = {};
+        if (!groups[script][proc]) groups[script][proc] = {};
+        if (!groups[script][proc][ver]) groups[script][proc][ver] = [];
+        groups[script][proc][ver].push(ds);
+      });
+    }
+  }
+  Object.keys(groups).forEach(script => {
+    const procGroups = groups[script];
+    Object.keys(procGroups).forEach(proc => {
+      let versionDatasets = [];
+      const versionGroup = procGroups[proc];
+      Object.keys(versionGroup).forEach(ver => {
+        const dsArray = versionGroup[ver];
+        if (dsArray.length > 0) {
+          const refData = dsArray[0].data;
+          const aggregatedData = refData.map((point, index) => {
+            let sum = 0;
+            let count = 0;
+            dsArray.forEach(ds => {
+              if (ds.data[index]) {
+                sum += ds.data[index].y;
+                count++;
+              }
+            });
+            return { x: point.x, y: sum / count };
+          });
+          versionDatasets.push({
+            label: ver,
+            data: aggregatedData,
+            borderColor: getDeterministicColor(ver),
+            backgroundColor: getDeterministicColor(ver),
+            fill: false,
+            tension: 0.4
+          });
+        }
+      });
+      if (versionDatasets.length > 0) {
+        const chartDiv = document.createElement('div');
+        chartDiv.className = 'chart-container';
+        const header = document.createElement('h3');
+        header.innerText = `Memory (Multi-Process) for ${script} - Process ${proc}`;
+        chartDiv.appendChild(header);
+        const canvas = document.createElement('canvas');
+        const canvasId = sanitizeId(script + "_multiMemory_proc_" + proc);
+        canvas.id = canvasId;
+        chartDiv.appendChild(canvas);
+        multiContainer.appendChild(chartDiv);
+        const config = {
+          type: 'line',
+          data: { datasets: versionDatasets },
+          options: {
+            responsive: true,
+            plugins: {
+              title: { display: true, text: `Memory Comparison by Version for ${script} - Process ${proc}` }
+            },
+            scales: {
+              x: {
+                title: { display: true, text: 'Number of Entities' },
+                type: 'linear'
+              },
+              y: {
+                title: { display: true, text: 'Memory (MB)' },
+                beginAtZero: true
+              }
+            }
+          }
+        };
+        new Chart(canvas.getContext('2d'), config);
+      }
+    });
+  });
+}
+
+function populateVersionSummaryTable() {
+  const tableBody = document.querySelector("#versionSummaryTable tbody");
+  Object.keys(versionSummary).forEach(version => {
+    const summary = versionSummary[version];
+    const row = document.createElement("tr");
+    row.innerHTML = `<td>${version}</td>
+                     <td>${summary.avgThroughput.toFixed(2)}</td>
+                     <td>${summary.avgMemory.toFixed(2)}</td>
+                     <td>${summary.testCount}</td>`;
+    tableBody.appendChild(row);
+  });
+}
+
+// Update DOMContentLoaded event listener to call populateVersionSummaryTable()
+document.addEventListener("DOMContentLoaded", function() {
+  createConsolidatedChart();
+  createThroughputCharts();
+  createSingleMemoryCharts();
+  createMultiMemoryCharts();
+  populateVersionSummaryTable();
+});
+
+// Dark mode toggle functionality
+document.getElementById("themeToggle").addEventListener("click", function() {
+  document.body.classList.toggle("dark-mode");
+  this.textContent = document.body.classList.contains("dark-mode") ? "Switch to Light Mode" : "Switch to Dark Mode";
+});
+</script>
+</body>
+</html>
