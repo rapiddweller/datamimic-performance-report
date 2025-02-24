@@ -113,6 +113,7 @@ This command will:
 │ └── test_entity_file.xml
 └── utils
 └── performance_utils.py # Performs performance measurements and test executions.
+```
 
 ## Configuration
 
