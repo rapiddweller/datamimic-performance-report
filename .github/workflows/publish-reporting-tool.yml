@@ -70,7 +70,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .venv
-          key: ${{ runner.os }}-python-${{ hashFiles('./pyproject.toml') }}
+          key: ${{ runner.os }}-python-${{ hashFiles('**/pyproject.toml') }}-v1
+          restore-keys: |
+            ${{ runner.os }}-python-
       - name: Check version
         run: |
           uv --version
@@ -158,25 +160,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-build-
 
-      - name: Validate version (setuptools-scm compatible)
-        run: |
-          if [[ "${{ github.event_name }}" == "push" && "${{ startsWith(github.ref, 'refs/tags/') }}" == "true" ]]; then
-            GIT_TAG=$(echo "${{ github.ref }}" | sed 's|refs/tags/||')
-            
-            # For setuptools_scm, build the package and extract version from metadata
-            python -m build
-            PACKAGE_VERSION=$(python -c "from importlib.metadata import metadata; print(metadata('datamimic-perf').get('Version'))" 2>/dev/null || echo "Error: Failed to extract version")
-            
-            echo "Git tag: $GIT_TAG"
-            echo "Built package version: $PACKAGE_VERSION"
-            
-            if [ "$GIT_TAG" != "$PACKAGE_VERSION" ]; then
-              echo "Warning: Git tag ($GIT_TAG) doesn't match package version ($PACKAGE_VERSION)"
-              echo "This may be expected with your setuptools-scm configuration."
-              # Don't exit with error, just warn
-            fi
-          fi
-
   unit_test:
     runs-on: ubuntu-22.04
     needs: install_dependencies
@@ -217,7 +200,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Important for SonarQube
+          fetch-depth: 0
 
       - name: Download coverage report
         uses: actions/download-artifact@v4
@@ -225,11 +208,16 @@ jobs:
           name: coverage-report
           path: coverage-reports
 
-      - name: Prepare coverage report for SonarCloud
+      - name: Fix coverage report paths
         run: |
-          # Rename the coverage file to match SonarCloud's expected pattern
+          # Rename to match SonarCloud's pattern
           mv coverage-reports/coverage.xml coverage-reports/coverage-python.xml
-          ls -la coverage-reports/
+          
+          # Fix absolute paths in the coverage report
+          sed -i 's|/__w/datamimic-performance-report/datamimic-performance-report/||g' coverage-reports/coverage-python.xml
+          
+          echo "Modified coverage report:"
+          head -n 20 coverage-reports/coverage-python.xml
 
       - name: Run SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@master
@@ -240,7 +228,8 @@ jobs:
           args: >
             -Dsonar.projectKey=rapiddweller_datamimic-performance-report
             -Dsonar.organization=rapiddweller
-            -Dsonar.python.coverage.reportPaths=coverage-reports/*coverage-*.xml
+            -Dsonar.python.coverage.reportPaths=coverage-reports/coverage-*.xml
+            -Dsonar.python.version=3.11
             -Dsonar.sources=app
             -Dsonar.tests=tests
             -Dsonar.cpd.exclusions=tests/**
