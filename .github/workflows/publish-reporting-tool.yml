@@ -106,7 +106,7 @@ jobs:
       - name: Run mypy
         run: |
           . .venv/bin/activate
-          uv run mypy app --explicit-package-bases
+          uv run mypy app
         shell: bash
       - name: Run ruff
         run: |
