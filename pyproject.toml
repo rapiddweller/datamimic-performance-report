@@ -66,6 +66,7 @@ exclude = [
     "public",
     ".venv",
     "tests",
+    "app/_version.py",
 ] # Exclude these directories from linting
 select = [
     # pycodestyle
@@ -89,7 +90,7 @@ markers = [
 
 [tool.pytest]
 parallel = true                      # Enable parallel test execution
-addopts = "-n auto --dist=loadscope"
+addopts = "-n 2 --dist=loadscope"
 
 [tool.pyright]
 typeCheckingMode = "off"
