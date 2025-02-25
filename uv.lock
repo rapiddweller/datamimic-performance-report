@@ -137,8 +137,8 @@ wheels = [
 ]
 
 [[package]]
-name = "datamimic-performance-report"
-version = "0.0.0"
+name = "datamimic-perf"
+version = "0.0.post1.dev21+gdf7539c.d20250225"
 source = { editable = "." }
 dependencies = [
     { name = "jinja2" },
