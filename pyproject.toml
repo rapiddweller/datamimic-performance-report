@@ -1,5 +1,5 @@
 [project]
-name = "datamimic-performance-report"
+name = "datamimic-perf"
 dynamic = ["version"] # Version is determined dynamically via setuptools-scm
 authors = [
     { name = "Rapiddweller Asia Co., Ltd.", email = "info@rapiddweller.com" },
