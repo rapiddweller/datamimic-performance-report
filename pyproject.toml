@@ -1,8 +1,12 @@
 [project]
 name = "datamimic-performance-report"
-version = "0.1.0"
-description = "Performance tests and data mimic operations for our project"
+dynamic = ["version"] # Version is determined dynamically via setuptools-scm
+authors = [
+    { name = "Rapiddweller Asia Co., Ltd.", email = "info@rapiddweller.com" },
+]
 readme = "README.md"
+license = { file = "LICENSE.txt" }
+description = "Performance tests and data mimic operations for our project"
 requires-python = ">=3.11"
 dependencies = [
     "typer-cli>=0.15.1",
@@ -23,5 +27,65 @@ name = "pypi"
 url = "https://pypi.org/simple"
 
 [build-system]
-requires = ["setuptools>=75.8.0", "wheel>=0.42.0"]
+requires = ["setuptools>=75.8.0", "wheel>=0.42.0", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
+
+
+[tool.uv]
+
+dev-dependencies = [
+    "pytest~=8.3.4",               # Testing framework
+    "pytest-xdist~=3.6.1",         # Distributed testing (parallel execution)
+    "pytest-cov~=6.0.0",           # Coverage reporting for pytest
+    "memory-profiler~=0.61.0",     # Monitors memory usage during code execution
+    "ruff>=0.9.2",                 # Fast Python linter written in Rust
+    "prettytable==3.12.0",         # from prettytable import PrettyTable
+    "mypy==1.15.0",
+    "types-toml>=0.10.8.20240310",
+    "pandas-stubs>=2.2.0",
+    "types-psutil>=6.0.0",
+    "types-PyYAML>=6.0.12",
+]
+
+[tool.mypy]
+python_version = "3.11"
+
+[tool.ruff]
+line-length = 120        # Maximum line length
+target-version = "py311" # Target Python version for linting
+
+[tool.ruff.lint]
+exclude = [
+    ".git",
+    "__pycache__",
+    "node_modules",
+    "public",
+    ".venv",
+    "tests",
+] # Exclude these directories from linting
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "run: Custom marker for running specific tests",
+] # Custom markers for pytest
+
+[tool.pytest]
+parallel = true                      # Enable parallel test execution
+addopts = "-n auto --dist=loadscope"
+
+[tool.pyright]
+typeCheckingMode = "off"

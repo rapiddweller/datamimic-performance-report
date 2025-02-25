@@ -1,12 +1,19 @@
 import json
-from app.report_components.data_processor import process_report_throughput_data, process_report_memory_data, process_overall_throughput
 from collections import defaultdict
+from typing import Any, Dict, List, DefaultDict
+
+from app.report_components.data_processor import (
+    process_overall_throughput,
+    process_report_memory_data,
+    process_report_throughput_data,
+)
+
 
 def aggregate_report_data(results):
     """
     Aggregates report data for consolidated report generation.
     Processes throughput and memory data grouped by script.
-    
+
     Returns:
         dict: Contains JSON strings for throughput data (measured and interpolated)
               and memory data (single process and multi-process) grouped by script.
@@ -15,14 +22,23 @@ def aggregate_report_data(results):
     throughput_by_script = process_report_throughput_data(results, target_processes)
     memory_by_script = process_report_memory_data(results)
     overall_throughput = process_overall_throughput(results)
-    
+
     return {
         "overallThroughput_json": json.dumps(overall_throughput),
-        "throughputByScriptMeasured_json": json.dumps({script: data["measured"] for script, data in throughput_by_script.items()}),
-        "throughputByScriptInterpolated_json": json.dumps({script: data["interpolated"] for script, data in throughput_by_script.items()}),
-        "memoryByScriptSingle_json": json.dumps({script: data["single_process"] for script, data in memory_by_script.items()}),
-        "memoryByScriptMulti_json": json.dumps({script: data["multi_process"] for script, data in memory_by_script.items()}),
+        "throughputByScriptMeasured_json": json.dumps(
+            {script: data["measured"] for script, data in throughput_by_script.items()}
+        ),
+        "throughputByScriptInterpolated_json": json.dumps(
+            {script: data["interpolated"] for script, data in throughput_by_script.items()}
+        ),
+        "memoryByScriptSingle_json": json.dumps(
+            {script: data["single_process"] for script, data in memory_by_script.items()}
+        ),
+        "memoryByScriptMulti_json": json.dumps(
+            {script: data["multi_process"] for script, data in memory_by_script.items()}
+        ),
     }
+
 
 def generate_html_report(report_title: str, results: list) -> str:
     """
@@ -36,35 +52,38 @@ def generate_html_report(report_title: str, results: list) -> str:
         HTML content as a string.
     """
     import json
+
     # Aggregate performance data
     target_processes = list(range(1, 21))  # Define target process range for interpolation
     throughput_by_script = process_report_throughput_data(results, target_processes)
-    
+
     # Prepare datasets arrays
-    rawThroughputDatasets = []
-    smoothThroughputDatasets = []
-    
+    rawThroughputDatasets: List[Dict[str, Any]] = []
+    smoothThroughputDatasets: List[Dict[str, Any]] = []
+
     # Process both measured and interpolated throughput data
     for script, data in throughput_by_script.items():
         # Add measured data
         for dataset in data["measured"]:
-            rawThroughputDatasets.append({
-                "label": f"{script} - {dataset['version']}",
-                "data": dataset["data"],
-                "type": "scatter"
-            })
+            rawThroughputDatasets.append(
+                {"label": f"{script} - {dataset['version']}", "data": dataset["data"], "type": "scatter"}
+            )
         # Add interpolated data
         for dataset in data["interpolated"]:
-            smoothThroughputDatasets.append({
-                "label": f"{script} - {dataset['version']}",
-                "data": dataset["data"],
-                "type": "line"
-            })
+            smoothThroughputDatasets.append(
+                {"label": f"{script} - {dataset['version']}", "data": dataset["data"], "type": "line"}
+            )
 
     # Process memory data
-    single_memory_data = defaultdict(lambda: defaultdict(list))
-    multi_memory_data = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-    version_summary_temp = defaultdict(lambda: {"throughputs": [], "memories": []})
+    single_memory_data: DefaultDict[str, DefaultDict[str, List[Dict[str, float]]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    multi_memory_data: DefaultDict[str, DefaultDict[str, DefaultDict[str, List[Dict[str, float]]]]] = defaultdict(
+        lambda: defaultdict(lambda: defaultdict(list))
+    )
+    version_summary_temp: DefaultDict[str, Dict[str, List[float]]] = defaultdict(
+        lambda: {"throughputs": [], "memories": []}
+    )
 
     for res in results:
         version = res.get("version", "unknown")
@@ -84,16 +103,12 @@ def generate_html_report(report_title: str, results: list) -> str:
         version_summary_temp[version]["throughputs"].append(throughput)
         version_summary_temp[version]["memories"].append(memory_MB)
 
-    rawSingleMemoryDatasets = []
+    rawSingleMemoryDatasets: List[Dict[str, Any]] = []
     for script, versions in single_memory_data.items():
         for version, points in versions.items():
-            rawSingleMemoryDatasets.append({
-                "label": f"{script} - {version}",
-                "data": points,
-                "type": "line"
-            })
+            rawSingleMemoryDatasets.append({"label": f"{script} - {version}", "data": points, "type": "line"})
 
-    rawMultiMemoryDatasets = {}
+    rawMultiMemoryDatasets: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
     for script, version_data in multi_memory_data.items():
         for version, proc_data in version_data.items():
             if version not in rawMultiMemoryDatasets:
@@ -101,42 +116,36 @@ def generate_html_report(report_title: str, results: list) -> str:
             for num_proc, points in proc_data.items():
                 if num_proc not in rawMultiMemoryDatasets[version]:
                     rawMultiMemoryDatasets[version][num_proc] = []
-                rawMultiMemoryDatasets[version][num_proc].append({
-                    "label": f"{script}",
-                    "data": points,
-                    "type": "line"
-                })
+                rawMultiMemoryDatasets[version][num_proc].append({"label": f"{script}", "data": points, "type": "line"})
 
     versionSummary = {}
     for version, data in version_summary_temp.items():
         cnt = len(data["throughputs"])
-        avg_throughput = sum(data["throughputs"])/cnt if cnt > 0 else 0
-        avg_memory = sum(data["memories"])/cnt if cnt > 0 else 0
-        versionSummary[version] = {
-            "avgThroughput": avg_throughput,
-            "avgMemory": avg_memory,
-            "testCount": cnt
-        }
+        avg_throughput = sum(data["throughputs"]) / cnt if cnt > 0 else 0
+        avg_memory = sum(data["memories"]) / cnt if cnt > 0 else 0
+        versionSummary[version] = {"avgThroughput": avg_throughput, "avgMemory": avg_memory, "testCount": cnt}
 
     overallThroughput = []
     for version, data in version_summary_temp.items():
         cnt = len(data["throughputs"])
-        avg_throughput = sum(data["throughputs"])/cnt if cnt > 0 else 0
+        avg_throughput = sum(data["throughputs"]) / cnt if cnt > 0 else 0
         overallThroughput.append({"version": version, "throughput": avg_throughput})
 
     context = {
-         "script_name": report_title,
-         "rawThroughputDatasets": json.dumps(rawThroughputDatasets),
-         "smoothThroughputDatasets": json.dumps(smoothThroughputDatasets),
-         "rawSingleMemoryDatasets": json.dumps(rawSingleMemoryDatasets),
-         "rawMultiMemoryDatasets": json.dumps(rawMultiMemoryDatasets),
-         "versionSummary": json.dumps(versionSummary),
-         "overallThroughput": json.dumps(overallThroughput)
+        "script_name": report_title,
+        "rawThroughputDatasets": json.dumps(rawThroughputDatasets),
+        "smoothThroughputDatasets": json.dumps(smoothThroughputDatasets),
+        "rawSingleMemoryDatasets": json.dumps(rawSingleMemoryDatasets),
+        "rawMultiMemoryDatasets": json.dumps(rawMultiMemoryDatasets),
+        "versionSummary": json.dumps(versionSummary),
+        "overallThroughput": json.dumps(overallThroughput),
     }
 
     import os
+
     import jinja2
-    template_dir = os.path.join(os.path.dirname(__file__), 'template')
+
+    template_dir = os.path.join(os.path.dirname(__file__), "template")
     env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir))
-    template = env.get_template('report_template.html.j2')
-    return template.render(context) 
+    template = env.get_template("report_template.html.j2")
+    return template.render(context)
