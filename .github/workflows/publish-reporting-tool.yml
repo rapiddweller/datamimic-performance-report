@@ -3,7 +3,7 @@ run-name: ${{ github.actor || 'unknown' }} is running ${{ github.workflow || 'wo
 on:
   push:
     branches:
-      - development
+      - main
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'
   pull_request:
