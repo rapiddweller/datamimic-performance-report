@@ -30,6 +30,10 @@ url = "https://pypi.org/simple"
 requires = ["setuptools>=75.8.0", "wheel>=0.42.0", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools_scm]
+version_scheme = "no-guess-dev" # Adds .devN for non-tag commits
+local_scheme = "node-and-date"  # Adds git hash and date info
+write_to = "app/_version.py"    # Writes version to this file
 
 [tool.uv]
 

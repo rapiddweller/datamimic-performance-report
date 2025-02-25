@@ -70,9 +70,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .venv
-          key: ${{ runner.os }}-python-${{ hashFiles('**/pyproject.toml') }}-v1
+          key: ${{ runner.os }}-python-venv-${{ hashFiles('pyproject.toml') }}-v1
           restore-keys: |
-            ${{ runner.os }}-python-
+            ${{ runner.os }}-python-venv-
       - name: Check version
         run: |
           uv --version
@@ -104,7 +104,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .venv
-          key: ${{ runner.os }}-python-${{ hashFiles('./pyproject.toml') }}
+          key: ${{ runner.os }}-python-venv-${{ hashFiles('pyproject.toml') }}-v1
+          restore-keys: |
+            ${{ runner.os }}-python-venv-
       - name: Run mypy
         run: |
           . .venv/bin/activate
@@ -181,7 +183,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .venv
-          key: ${{ runner.os }}-python-${{ hashFiles('./pyproject.toml') }}
+          key: ${{ runner.os }}-python-venv-${{ hashFiles('pyproject.toml') }}-v1
+          restore-keys: |
+            ${{ runner.os }}-python-venv-
       - name: Run unit tests with coverage
         run: |
           . .venv/bin/activate
