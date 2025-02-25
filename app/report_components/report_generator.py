@@ -1,6 +1,6 @@
 import json
 from collections import defaultdict
-from typing import Any, Dict, List, DefaultDict
+from typing import Any
 
 from app.report_components.data_processor import (
     process_overall_throughput,
@@ -58,8 +58,8 @@ def generate_html_report(report_title: str, results: list) -> str:
     throughput_by_script = process_report_throughput_data(results, target_processes)
 
     # Prepare datasets arrays
-    rawThroughputDatasets: List[Dict[str, Any]] = []
-    smoothThroughputDatasets: List[Dict[str, Any]] = []
+    rawThroughputDatasets: list[dict[str, Any]] = []
+    smoothThroughputDatasets: list[dict[str, Any]] = []
 
     # Process both measured and interpolated throughput data
     for script, data in throughput_by_script.items():
@@ -75,13 +75,13 @@ def generate_html_report(report_title: str, results: list) -> str:
             )
 
     # Process memory data
-    single_memory_data: DefaultDict[str, DefaultDict[str, List[Dict[str, float]]]] = defaultdict(
+    single_memory_data: defaultdict[str, defaultdict[str, list[dict[str, float]]]] = defaultdict(
         lambda: defaultdict(list)
     )
-    multi_memory_data: DefaultDict[str, DefaultDict[str, DefaultDict[str, List[Dict[str, float]]]]] = defaultdict(
+    multi_memory_data: defaultdict[str, defaultdict[str, defaultdict[str, list[dict[str, float]]]]] = defaultdict(
         lambda: defaultdict(lambda: defaultdict(list))
     )
-    version_summary_temp: DefaultDict[str, Dict[str, List[float]]] = defaultdict(
+    version_summary_temp: defaultdict[str, dict[str, list[float]]] = defaultdict(
         lambda: {"throughputs": [], "memories": []}
     )
 
@@ -103,12 +103,12 @@ def generate_html_report(report_title: str, results: list) -> str:
         version_summary_temp[version]["throughputs"].append(throughput)
         version_summary_temp[version]["memories"].append(memory_MB)
 
-    rawSingleMemoryDatasets: List[Dict[str, Any]] = []
+    rawSingleMemoryDatasets: list[dict[str, Any]] = []
     for script, versions in single_memory_data.items():
         for version, points in versions.items():
             rawSingleMemoryDatasets.append({"label": f"{script} - {version}", "data": points, "type": "line"})
 
-    rawMultiMemoryDatasets: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
+    rawMultiMemoryDatasets: dict[str, dict[str, list[dict[str, Any]]]] = {}
     for script, version_data in multi_memory_data.items():
         for version, proc_data in version_data.items():
             if version not in rawMultiMemoryDatasets:
