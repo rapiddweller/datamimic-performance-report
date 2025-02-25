@@ -203,7 +203,7 @@ jobs:
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-unit
+          name: coverage-unit-python-${{ matrix.python-version }}
           path: coverage.xml
 
   sonarcloud_analysis:
@@ -218,16 +218,29 @@ jobs:
         with:
           path: coverage-reports
 
-      - name: Move coverage reports
+      - name: Combine coverage reports
         run: |
-          mv coverage-reports/coverage-unit/coverage.xml coverage-reports/coverage-unit.xml
-          rm -rf coverage-reports/coverage-unit
+          # First make a directory for the combined report
+          mkdir -p combined-coverage
+          
+          # Find the Python 3.11 report (most recent version) and use it as main
+          if [ -d "coverage-reports/coverage-unit-python-3.11" ]; then
+            cp coverage-reports/coverage-unit-python-3.11/coverage.xml combined-coverage/coverage-unit.xml
+          elif [ -d "coverage-reports/coverage-unit-python-3.10" ]; then
+            cp coverage-reports/coverage-unit-python-3.10/coverage.xml combined-coverage/coverage-unit.xml
+          else
+            echo "Warning: No coverage reports found!"
+            exit 1
+          fi
+          
+          # Clean up directories
+          rm -rf coverage-reports/coverage-unit-python-*
           rm -rf coverage-reports/artifact
           rm -rf coverage-reports/setup
         shell: bash
 
       - name: Display structure of downloaded files
-        run: ls -R coverage-reports
+        run: ls -R combined-coverage
 
       - name: Run SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@master
@@ -238,7 +251,7 @@ jobs:
           args: >
             -Dsonar.projectKey=rapiddweller_datamimic_perf
             -Dsonar.organization=rapiddweller
-            -Dsonar.python.coverage.reportPaths=coverage-reports/coverage-unit.xml
+            -Dsonar.python.coverage.reportPaths=combined-coverage/coverage-unit.xml
             -Dsonar.sources=app
             -Dsonar.tests=tests
             -Dsonar.cpd.exclusions=tests/**
