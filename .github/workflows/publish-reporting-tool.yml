@@ -174,10 +174,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: install_dependencies
     timeout-minutes: 20
-    strategy:
-      matrix:
-        python-version: ['3.10', '3.11']
-    container: python:${{ matrix.python-version }}-slim-buster
+    container: python:3.11-slim-buster
     steps:
       - name: Setup git
         run: |
@@ -186,6 +183,8 @@ jobs:
           git config --global --add safe.directory $(realpath .)
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Important for SonarQube to analyze all history
       - name: Install uv
         uses: astral-sh/setup-uv@v5
       - name: Load venv cache
@@ -196,15 +195,12 @@ jobs:
       - name: Run unit tests with coverage
         run: |
           . .venv/bin/activate
-          # Use number of cores available, with a maximum of 4
-          CORES=$(nproc)
-          MAX_WORKERS=$(( CORES > 4 ? 4 : CORES ))
-          uv run pytest tests/ -n $MAX_WORKERS --cov=app --cov-report=xml
+          uv run pytest tests/ --cov=app --cov-report=xml:coverage.xml
         shell: bash
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-unit-python-${{ matrix.python-version }}
+          name: coverage-report
           path: coverage.xml
 
   sonarcloud_analysis:
@@ -213,36 +209,20 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Important for SonarQube
 
-      - name: Download coverage reports
+      - name: Download coverage report
         uses: actions/download-artifact@v4
         with:
-          path: coverage-reports
+          name: coverage-report
+          path: .
 
-      - name: Prepare coverage reports
+      - name: Display coverage file
         run: |
-          # Create proper coverage-reports directory structure for SonarCloud
-          mkdir -p coverage-reports
-          
-          # Find the Python 3.11 report (most recent version) and use it as main
-          if [ -d "coverage-reports/coverage-unit-python-3.11" ]; then
-            cp coverage-reports/coverage-unit-python-3.11/coverage.xml coverage-reports/coverage-python-3.11.xml
-          elif [ -d "coverage-reports/coverage-unit-python-3.10" ]; then
-            cp coverage-reports/coverage-unit-python-3.10/coverage.xml coverage-reports/coverage-python-3.10.xml
-          else
-            echo "Warning: No coverage reports found!"
-            ls -la coverage-reports/
-            exit 1
-          fi
-          
-          # Clean up directories
-          rm -rf coverage-reports/coverage-unit-python-*
-          rm -rf coverage-reports/artifact
-          rm -rf coverage-reports/setup
-        shell: bash
-
-      - name: Display structure of downloaded files
-        run: ls -R coverage-reports
+          ls -la
+          echo "Coverage file content check (first few lines):"
+          head -n 20 coverage.xml || echo "coverage.xml file not found or empty"
 
       - name: Run SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@master
@@ -253,7 +233,7 @@ jobs:
           args: >
             -Dsonar.projectKey=rapiddweller_datamimic-performance-report
             -Dsonar.organization=rapiddweller
-            -Dsonar.python.coverage.reportPaths=coverage-reports/coverage-*.xml
+            -Dsonar.python.coverage.reportPaths=coverage.xml
             -Dsonar.sources=app
             -Dsonar.tests=tests
             -Dsonar.cpd.exclusions=tests/**
@@ -265,7 +245,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: [ unit_test, build ]
     environment:
-      name: test
+      name: testpypi
       url: https://test.pypi.org/p/datamimic-perf
     permissions:
       id-token: write # Mandatory for trusted publishing
@@ -296,6 +276,7 @@ jobs:
       - name: Publish to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           repository-url: https://test.pypi.org/legacy/
 
   release:
@@ -303,7 +284,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: [ unit_test, build ]
     environment:
-      name: production
+      name: pypi
       url: https://pypi.org/p/datamimic-perf
     permissions:
       id-token: write # Mandatory for trusted publishing
