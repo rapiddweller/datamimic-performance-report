@@ -249,7 +249,7 @@ jobs:
           SONAR_HOST_URL: https://sonarcloud.io
         with:
           args: >
-            -Dsonar.projectKey=rapiddweller_datamimic_perf
+            -Dsonar.projectKey=rapiddweller_datamimic-performance-report
             -Dsonar.organization=rapiddweller
             -Dsonar.python.coverage.reportPaths=combined-coverage/coverage-unit.xml
             -Dsonar.sources=app
